@@ -1,6 +1,7 @@
 import { BaseGuardrail, type GuardrailContext, type GuardrailResult } from "./base";
 import { processPII } from "@/shared/utils/inputSanitizer";
 import { sanitizePII, sanitizePIIResponse } from "@/lib/piiSanitizer";
+import { isVaultEnabled, vaultRedactText, vaultRestoreObject } from "@/lib/piiVault";
 
 import { isFeatureFlagEnabled } from "@/shared/utils/featureFlags";
 
@@ -18,6 +19,10 @@ function isRequestPiiMaskingEnabled() {
 }
 
 function sanitizeStringValue(text: string) {
+  if (isVaultEnabled()) {
+    const r = vaultRedactText(text);
+    return { detections: r.count ? [{ count: r.count, type: "vault" }] : [], modified: r.text !== text, text: r.text };
+  }
   const result = processPII(text, isRequestPiiMaskingEnabled());
   return {
     detections: result.detections,
@@ -215,8 +220,10 @@ export class PIIMaskerGuardrail extends BaseGuardrail {
 
     const clonedResponse = JSON.parse(JSON.stringify(response)) as JsonRecord;
     const before = JSON.stringify(clonedResponse);
+    if (isVaultEnabled()) vaultRestoreObject(clonedResponse);
     const sanitized = sanitizePIIResponse(clonedResponse) as JsonRecord;
     const modifiedResponsesShape = maskResponsesOutput(sanitized);
+    if (isVaultEnabled()) vaultRestoreObject(sanitized);
     const after = JSON.stringify(sanitized);
     const modified = before !== after || modifiedResponsesShape;
 

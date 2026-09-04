@@ -1,5 +1,6 @@
 import { createSseTextTransform, FieldCategory, getFieldCategory } from "./sseTextTransform";
 import { sanitizePII } from "./piiSanitizer";
+import { isVaultEnabled, vaultRestoreText } from "./piiVault";
 
 export interface PiiTransformOptions {
   windowSize?: number;
@@ -40,14 +41,16 @@ export function createPiiSseTransform(options?: PiiTransformOptions): TransformS
     isSnapshot = false
   ): string => {
     if (field === "toolArgs" || field === "partialJson") {
-      return text;
+      return isVaultEnabled() ? vaultRestoreText(text) : text;
     }
     if (isSnapshot) {
-      return sanitizePII(text).text;
+      const snap = sanitizePII(text).text;
+      return isVaultEnabled() ? vaultRestoreText(snap) : snap;
     }
     const buffers = getBuffers(index);
     buffers[field] += text;
-    const { text: sanitized, endMatchIndex } = sanitizePII(buffers[field], !isStopSignal);
+    let { text: sanitized, endMatchIndex } = sanitizePII(buffers[field], !isStopSignal);
+    if (isVaultEnabled()) sanitized = vaultRestoreText(sanitized);
     let emitLength = isStopSignal ? sanitized.length : Math.max(0, sanitized.length - W);
 
     // Cap emitLength at the start of any PII that touched the end of the buffer
@@ -75,7 +78,9 @@ export function createPiiSseTransform(options?: PiiTransformOptions): TransformS
       for (const key of Object.keys(buffers)) {
         const field = key as FieldCategory;
         if (buffers[field]) {
-          buffers[field] = sanitizePII(buffers[field]).text;
+          let t = sanitizePII(buffers[field]).text;
+          if (isVaultEnabled()) t = vaultRestoreText(t);
+          buffers[field] = t;
         }
       }
     }
