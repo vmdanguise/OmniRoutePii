@@ -83,6 +83,18 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     warningLevel: "info",
   },
   {
+    key: "PII_REDACTION_ENABLED_VAULT",
+    label: "PII Vault (Reversible)",
+    description:
+      "Reversible vault: hash sensitive values to DB on request and restore original with [OFUSCATED] on response. Overrides standard redaction when enabled.",
+    descriptionI18nKey: "featureFlagPiiVaultEnabledDescription",
+    category: "security",
+    defaultValue: "false",
+    type: "boolean",
+    requiresRestart: false,
+    warningLevel: "info",
+  },
+  {
     key: "OUTBOUND_SSRF_GUARD_ENABLED",
     label: "SSRF Guard",
     description: "Block outbound requests to private/internal IP ranges",

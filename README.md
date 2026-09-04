@@ -1262,6 +1262,22 @@ Métricas canônicas em 2026-08-24: **1.029 vídeos únicos** · **11.132.922 vi
 
 <div align="center">
 
+## 🔐 Privacy Vault — Anonimizador Reversible
+
+</div>
+
+> **Nuevo en este fork:** Vault de privacidad reversible para PII. Actívalo con `PII_REDACTION_ENABLED_VAULT=true` (o dashboard `feature_flags`).
+
+**Cómo funciona:** en la **entrada** cada dato sensible detectado (email, CPF/CNPJ, CC, teléfono, IP, `AKIA...`, `sk|pk|api|key|token_...`) se hashea con SHA-256 y se guarda en SQLite (`pii_vault` — `token → original`) deduplicando por hash, y al modelo solo viaja el token `[VAULT_TIPO_hash]`. En la **salida** (JSON y SSE streaming) los tokens se restauran al valor original con marca ` [OFUSCATED]` para auditar que no viajó al proveedor. Mismo valor → mismo hash/token, sin crear clases nuevas — solo funciones en `src/lib/piiVault.ts` + hooks en `piiMasker.ts`/`streamingPiiTransform.ts`. Tabla `164_pii_vault.sql`.
+
+```bash
+PII_REDACTION_ENABLED_VAULT=true npm run dev
+# request:  "mi mail es a@b.com" → modelo ve "[VAULT_EMAIL_abc123]"
+# response: "[VAULT_EMAIL_abc123]" → cliente recibe "a@b.com [OFUSCATED]"
+```
+
+<div align="center">
+
 <br/>
 
 ## 📖 Documentation
